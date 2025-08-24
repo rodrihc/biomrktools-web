@@ -21,11 +21,6 @@ def _fs():
         credential=_cred
     )
 
-def read_json_from_adls(path: str) -> Any:
-    uri = f"abfss://{_container}@{_account}.dfs.core.windows.net/{path}"
-    with _fs().open(uri, "rb") as f:
-        return json.loads(f.read().decode("utf-8"))
-
 def read_delta_head(path: str, limit: int = 20) -> List[dict]:
     # Acquire a bearer token for Delta-RS object store:
     token = _cred.get_token("https://storage.azure.com/.default").token

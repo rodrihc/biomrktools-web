@@ -5,9 +5,16 @@
 - PS C:\biomarkers\repositories\biomrktools-web> .\.venv\Scripts\Activate.ps1
 - pip install -r requirements.txt
 - docker build -t biomrktools-web:latest .
-- docker tag biomrktools-web:latest biomrktools-hvbxcnd8d4a3ahg9.azurecr.io/biomrktools-web:latest
-- docker login biomrktools-hvbxcnd8d4a3ahg9.azurecr.io -ubiomrktools -p <the-password>
-- docker push biomrktools-hvbxcnd8d4a3ahg9.azurecr.io/biomrktools-web:latest
+
+
+### Create an image like this:
+>docker build -t rodrisv/biomrktools-web:latest . 
+
+### (Optional) add a tag to the image like this:
+> docker tag rodrisv/biomrktools-web:latest biomrktools-web:latest
+
+### push to docker hub like this
+> docker push rodrisv/biomrktools-web:latest
 
 ### Later (for Azure Container Apps)
 

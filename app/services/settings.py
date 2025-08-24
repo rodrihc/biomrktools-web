@@ -5,7 +5,6 @@ class Settings(BaseSettings):
     PORT: str
     AZURE_STORAGE_ACCOUNT: str
     AZURE_CONTAINER: str
-    JSON_PATH: str
     DELTA_PATH: str
     API_BASE: str
     SAS_TOKEN: str
