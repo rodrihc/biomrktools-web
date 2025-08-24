@@ -31,6 +31,11 @@ dash_app.layout = layout
 app.mount("/dash", WSGIMiddleware(dash_app.server))
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
 
+    # Use host and port from environment variables if set
+    HOST = os.getenv("HOST", "0.0.0.0")      # default 0.0.0.0 for Docker/ContainerApps
+    PORT = int(os.getenv("PORT", 8080))      # default 8080
+
+    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)
