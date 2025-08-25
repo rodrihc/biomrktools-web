@@ -6,20 +6,18 @@ from azure.storage.blob import ContainerClient
 from dash import dash_table, html
 from dotenv import load_dotenv
 import pandas as pd 
-
-load_dotenv()
-
-AZURE_CONTAINER = os.getenv("AZURE_CONTAINER")  # e.g. "silver"
-API_BASE = os.getenv("API_BASE")                # e.g. "https://biomrktools02sa.blob.core.windows.net"
-DELTA_PATH = os.getenv("DELTA_PATH")            # e.g. "biomrk_master/adeg/analysis"
-SAS_TOKEN = os.getenv("SAS_TOKEN")              # full SAS token string
+from app.services.settings import Settings
+from app.services import app_config
 
 
-print(AZURE_CONTAINER)
-print(API_BASE)
-print(DELTA_PATH)
-print(SAS_TOKEN)
+settings = Settings()
 
+BIOMRKTOOLS_SA_TOKEN = settings.BIOMRKTOOLS_SA_TOKEN                # full SAS token string
+BIOMRKTOOLS_ENV =  settings.BIOMRKTOOLS_ENV                         # full SAS token string
+
+DELTA_PATH          = app_config.DATA_PATHS.get("adeg")             # e.g. "biomrk_master/adeg/analysis/log_adeg_summary"
+STORAGE_ACCOUNT     = app_config.BASE_PATHS.get("storage_account")  # e.g. "https://biomrktools02sa.blob.core.windows.net"
+SILVER_CONTAINER    = app_config.BASE_PATHS.get("silver_container")
 
 #variables["config"]
 def read_display_vars(element:dict):
@@ -43,9 +41,9 @@ def read_display_vars(element:dict):
 
 def serve_layout():
     # Build container client from SAS URL
-    container_url = f"{API_BASE}/{AZURE_CONTAINER}?{SAS_TOKEN}"
+    container_url = f"https://{STORAGE_ACCOUNT}.blob.core.windows.net/{SILVER_CONTAINER}?{BIOMRKTOOLS_SA_TOKEN}"
     container_client = ContainerClient.from_container_url(container_url)
-
+    
     # List all parquet parts under the given Delta path
     part_names = [
         b.name for b in container_client.list_blobs(name_starts_with=DELTA_PATH)
@@ -68,7 +66,7 @@ def serve_layout():
 
 
     df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df = df[df["analysis_id"] == "adeg_lusc_001"]
+    df = df[df["analysis_id"] == "adeg_brca_001"]
     df = df.sort_values("timestamp", ascending=False).iloc[0]
 
     variables = df.to_dict()
@@ -123,3 +121,4 @@ def serve_layout():
     ])
 
 layout = serve_layout
+
