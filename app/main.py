@@ -5,7 +5,7 @@ import dash_bootstrap_components as dbc
 from dash_extensions.enrich import DashProxy
 
 from app.dash_app.layout import serve_layout
-from app.api import delta_api
+from app.api import data
 
 # FastAPI app
 app = FastAPI(title="biomrktools-web")
@@ -17,7 +17,7 @@ app.add_middleware(
 )
 
 # Include FastAPI API endpoints
-app.include_router(delta_api.router)
+app.include_router(data.router)
 
 # Dash app
 dash_app = DashProxy(
