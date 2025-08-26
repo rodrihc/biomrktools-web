@@ -1,11 +1,12 @@
 from dash import Input, Output, callback, dash_table, html
 from dash import Input, Output, callback, html
 from dash import dash_table, html
-from dash import Input, Output, callback, html
+import pandas as pd
+import plotly.express as px
 
-from ..services.controllers import load_analysis_delta_table
-from .callbacks_settings import background_callback_manager
 from app.services.controllers import load_analysis_delta_table
+
+from .callbacks_settings import background_callback_manager
 
 def render_value(key, value):
     """Render a single key/value pair or recurse if nested."""
@@ -128,7 +129,9 @@ def load_analysis(_):
 
 @callback(
     Output("config-panel", "children"),
-    Input("analysis-store", "data")
+    Input("analysis-store", "data"),
+    background=True,
+    manager=background_callback_manager
 )
 def display_config(variables):
     if not variables:
@@ -150,7 +153,9 @@ def display_config(variables):
 
 @callback(
     Output("summary-panel", "children"),
-    Input("analysis-store", "data")
+    Input("analysis-store", "data"),
+    background=True,
+    manager=background_callback_manager
 )
 def display_summary(variables):
     if not variables:
@@ -196,6 +201,8 @@ def display_summary(variables):
 @callback(
     Output("llm-response-panel", "children"),
     Input("analysis-store", "data"),
+    background=True,
+    manager=background_callback_manager
 )
 def display_llm_response(variables):
 
@@ -213,56 +220,58 @@ def display_llm_response(variables):
     )
 
 
-
-from dash import callback, Output, Input
-import plotly.express as px
-import plotly.graph_objects as go
-import pandas as pd
-
 @callback(
     Output("pca-3d-plot", "figure"),
-    Input("analysis-store", "data")
+    Input("analysis-store", "data"),
+    background=True,
+    manager=background_callback_manager
 )
 def display_pca_3d(variables):
     if not variables:
-        return go.Figure()  # empty figure while loading
+        return px.scatter_3d()  # empty figure
 
-    pc_df = pd.DataFrame(variables["dir_summary"].get("pca_data", []))  # expects PC1, PC2, PC3, subgroup, sample_id
-    dir_summary = variables["dir_summary"]
-    
+    result = variables.get("results", [])
+    if not result:
+        return px.scatter_3d()  # still empty if no results
+
+    # Build flattened DataFrame
+    pc_rows = []
+    for row in result:
+        values = row.get("values", [])
+        row_dict = {d.get('column'): d.get('value') for d in values if 'column' in d and 'value' in d}
+        if not row_dict:
+            continue
+        row_dict['sample_id'] = row.get('sample_id', 'Unknown')
+        row_dict['subgroup'] = row.get('subgroup', 'Unknown')
+        pc_rows.append(row_dict)
+
+    pc_df = pd.DataFrame(pc_rows)
+
+    # Ensure PC1, PC2, PC3 exist
+    for col in ['PC1', 'PC2', 'PC3']:
+        if col not in pc_df.columns:
+            pc_df[col] = 0.0
+
     if pc_df.empty:
-        return go.Figure()
+        return px.scatter_3d()  # still empty if no valid data
 
     fig = px.scatter_3d(
         pc_df,
-        x="PC1", y="PC2", z="PC3",
-        color="subgroup",
-        hover_data=["sample_id", "subgroup"],
+        x='PC1',
+        y='PC2',
+        z='PC3',
+        color='subgroup',
+        hover_data=['sample_id', 'subgroup'],
         title="PCA 3D Plot"
     )
 
-    # Add summary annotation
-    fig.add_annotation(
-        text=dir_summary.get("summary", ""),
-        xref="paper", yref="paper",
-        x=0, y=1.15, showarrow=False,
-        font=dict(size=12, color="black"),
-        align="left"
+    fig.update_layout(
+        scene=dict(
+            xaxis_title='PC1',
+            yaxis_title='PC2',
+            zaxis_title='PC3'
+        ),
+        margin=dict(l=0, r=0, b=0, t=40)
     )
-
-    # Optionally add top_genes as a table below
-    top_genes = dir_summary.get("top_genes", [])
-    if top_genes:
-        fig.add_trace(go.Table(
-            header=dict(values=["Gene", "logFC", "p-value"]),
-            cells=dict(
-                values=[
-                    [g["gene_name"] for g in top_genes],
-                    [g["log_fc"] for g in top_genes],
-                    [g["p_value"] for g in top_genes],
-                ]
-            ),
-            domain=dict(x=[0, 1], y=[-0.4, -0.05])
-        ))
 
     return fig

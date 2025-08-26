@@ -93,15 +93,18 @@ def load_analysis_delta_table(path: str = DELTA_PATH, limit: int = 20) -> Dict[s
             table_uri=uri,
             storage_options={
                 "azure_storage_account_name": STORAGE_ACCOUNT,
-                "azure_storage_sas_token": token,
+                "azure_storage_sas_token": BIOMRKTOOLS_SA_TOKEN,
             },
         )
         .to_pyarrow_table(
-            partitions=[("cancer_code", "=", "BRCA")],  # adjust as needed
+            partitions=[("cancer_code", "=", "OV")],  # adjust as needed
             columns=None,
         )
         .to_pandas()
     )
+
+    if df.empty:
+        return {}
 
     # Ensure top_genes is always a list
     if "top_genes" in df.columns:
@@ -113,7 +116,7 @@ def load_analysis_delta_table(path: str = DELTA_PATH, limit: int = 20) -> Dict[s
     record_dict = df.iloc[0].to_dict()
 
     # Safely decode JSON string columns if necessary
-    for col in ["dir_summary", "config", "llm_summary"]:
+    for col in ["dir_summary", "config", "llm_summary", "results"]:
         if col in record_dict and isinstance(record_dict[col], str):
             try:
                 record_dict[col] = json.loads(record_dict[col])
