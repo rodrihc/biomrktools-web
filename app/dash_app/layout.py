@@ -14,5 +14,6 @@ def serve_layout():
         dcc.Store(id="analysis-store"),  # store loaded data
         dbc.Row(dbc.Col(html.Div(id="config-panel", className="p-2 border rounded"), width=6)),
         dbc.Row(dbc.Col(html.Div(id="summary-panel", className="p-2 border rounded"), width=6)),
+        dbc.Row(dbc.Col(html.Div(id="pca-3d-plot", className="p-2 border rounded"), width=6)),
         dbc.Row(dbc.Col(html.Div(id="llm-response-panel", className="p-2 border rounded"), width=6)),
     ], fluid=True)

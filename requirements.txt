@@ -17,5 +17,6 @@ python-dotenv>=1.0
 pydantic
 pydantic-settings
 dash_bootstrap_components
+seaborn
 
 

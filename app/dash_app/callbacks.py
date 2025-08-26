@@ -211,3 +211,58 @@ def display_llm_response(variables):
         ],
         style={"fontFamily": "Arial, sans-serif", "fontSize": "14px"},
     )
+
+
+
+from dash import callback, Output, Input
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
+
+@callback(
+    Output("pca-3d-plot", "figure"),
+    Input("analysis-store", "data")
+)
+def display_pca_3d(variables):
+    if not variables:
+        return go.Figure()  # empty figure while loading
+
+    pc_df = pd.DataFrame(variables["dir_summary"].get("pca_data", []))  # expects PC1, PC2, PC3, subgroup, sample_id
+    dir_summary = variables["dir_summary"]
+    
+    if pc_df.empty:
+        return go.Figure()
+
+    fig = px.scatter_3d(
+        pc_df,
+        x="PC1", y="PC2", z="PC3",
+        color="subgroup",
+        hover_data=["sample_id", "subgroup"],
+        title="PCA 3D Plot"
+    )
+
+    # Add summary annotation
+    fig.add_annotation(
+        text=dir_summary.get("summary", ""),
+        xref="paper", yref="paper",
+        x=0, y=1.15, showarrow=False,
+        font=dict(size=12, color="black"),
+        align="left"
+    )
+
+    # Optionally add top_genes as a table below
+    top_genes = dir_summary.get("top_genes", [])
+    if top_genes:
+        fig.add_trace(go.Table(
+            header=dict(values=["Gene", "logFC", "p-value"]),
+            cells=dict(
+                values=[
+                    [g["gene_name"] for g in top_genes],
+                    [g["log_fc"] for g in top_genes],
+                    [g["p_value"] for g in top_genes],
+                ]
+            ),
+            domain=dict(x=[0, 1], y=[-0.4, -0.05])
+        ))
+
+    return fig
