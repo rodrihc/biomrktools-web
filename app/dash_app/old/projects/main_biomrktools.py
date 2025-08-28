@@ -2,7 +2,7 @@
 # app.py
 from dash import Dash, html, dcc, Input, Output
 import dash_bootstrap_components as dbc
-from pages import deg_analysis, pathway_analysis, drug_sensitivity_prediction_analysis, survival_analysis, omics_integration_analysis, mutation_analysis
+#from dash_app.pages import deg_analysis, pathway_analysis, drug_sensitivity_prediction_analysis, survival_analysis, omics_integration_analysis, mutation_analysis
 from projects import p_researcher, p_clinician, p_scientist
 
 app = Dash(__name__, suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.CYBORG])

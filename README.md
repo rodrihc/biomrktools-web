@@ -1,21 +1,49 @@
 # biomrktools-web
 
+### Run in localhost
 
-- PS C:\biomarkers\repositories\biomrktools-web> py -3.12 -m venv .venv
-- PS C:\biomarkers\repositories\biomrktools-web> .\.venv\Scripts\Activate.ps1
-- pip install -r requirements.txt
-- docker build -t biomrktools-web:latest .
+- Create a virtual environment if it does not exist
+> py -3.12 -m venv .venv
+
+. Activate de virtual environment
+> .\.venv\Scripts\Activate.ps1
+
+- Install dependencies
+> pip install -r requirements.txt
 
 
-### Create an image like this:
->docker build -t rodrisv/biomrktools-web:latest . 
+## Building the docker container
 
-### (Optional) add a tag to the image like this:
+## Test the containerized app in localhost
+> docker compose build --no-cache
+>
+> docker composer down
+>
+> docker composer up
+
+## Publishing the Docker Image in Docker Hub
+> docker login
+
+> docker build -t biomrktools-web:latest .
+
+- Create an image:
+> docker build -t rodrisv/biomrktools-web:latest .
+
+- Add a tag to the image (optional)
 > docker tag rodrisv/biomrktools-web:latest biomrktools-web:latest
 
-### push to docker hub like this
+- Push to docker hub like this
 > docker push rodrisv/biomrktools-web:latest
 
-### Later (for Azure Container Apps)
+### Deplyo to Azure Container Apps
+
+- Create a container revision:
+  - Add the environment variables. T
+  - The docker hub repository is being currently accessed trough a username: rodrisv and a password <password>. The storage account sas token should also be added as an environment variable for the container.
+  - Enable ingress networks from anywhere (temp)
+  - Give minumal pcu and storage settings.
 
 - When you deploy to Azure Container Apps, you should not use admin creds. Instead, assign the AcrPull role to the Container App’s managed identity so it can pull the image cleanly.
+
+- See deployment logs:
+> az containerapp logs show --name biomrktools01capp --resource-group biomrktools02ws-web

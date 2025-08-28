@@ -1,2 +1,15 @@
-Lib
-Scripts
+# Ignore Python cache/bytecode everywhere
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual env
+.venv/
+env/
+Lib/
+Scripts/
+
+# Ignore local databases
+cache/*.db
+cache/*.db-*
