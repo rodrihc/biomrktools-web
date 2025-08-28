@@ -15,24 +15,28 @@ def serve_layout():
 
        # Captures pathname + query string
         dcc.Location(id="url", refresh=False),
-
-        dcc.Store(id="params-store"),
         
         dcc.Store(id="config-store"),
         dcc.Store(id="summary-store"),
         dcc.Store(id="top-genes-store"),
         dcc.Store(id="llm-summary-store"),
         dcc.Store(id="results-store"),
-        dcc.Store(id="pc-avg-exprs-store"),
+        dcc.Store(id="pc-avg-exprs-store"),       
+        dcc.Store(id="params-store"),       
+    
+               # Sub-container-1
+            dbc.Row(
+                id="sub-container-0",
+                children=[
+                    dbc.Col(
+                        html.Div(id="title-panel", className="p-2 border rounded"),
+                        width=12
+                    )
+                ]
+            ),
 
-            
-        
-        dcc.Store(id="analysis-store"),  # store loaded data
-        
 
-
-
-                    # Sub-container-1
+                       # Sub-container-1
             dbc.Row(
                 id="sub-container-1",
                 children=[

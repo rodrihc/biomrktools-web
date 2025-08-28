@@ -1,8 +1,11 @@
+from urllib.parse import parse_qs
+
 from dash import Input, Output, callback, dash_table, dcc, html
 from dash import Input, Output, callback
 from dash import Input, Output, callback
 from dash import Input, Output, callback
 from dash import Input, Output, callback
+from flask import request
 import numpy as np
 import numpy as np
 import numpy as np
@@ -18,8 +21,8 @@ import plotly.graph_objects as go
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from app.services.controllers import load_analysis_delta_table
 from app.services import controllers as ctrl
+from app.services.controllers import load_analysis_delta_table
 
 from .callbacks_settings import background_callback_manager
 
@@ -115,11 +118,7 @@ def render_list(lst, level=0):
     return html.Div(children)
 
 
-
-from urllib.parse import parse_qs
-from flask import request
-
-
+    
 @callback(
     Output("params-store", "data"),
     Input("url", "search")
@@ -128,6 +127,15 @@ def read_query(search):
     if not search:
         return {}
     return {k: v[0] for k, v in parse_qs(search.lstrip("?")).items()}
+
+@callback(
+    Output("title-panel", "children"),
+    Input("params-store", "data"),
+    background=False,
+    manager=background_callback_manager
+)
+def set_title(params):
+    return html.Header(params.get("cancer_code"))
 
 
 @callback(
@@ -142,6 +150,10 @@ def read_query(search):
     manager=background_callback_manager
 )
 def load_analysis(params):
+
+    print("params:", params)
+    if not params:
+        return ("No params", params)
 
     variables = load_analysis_delta_table(cancer_code=params.get("cancer_code")) or {}
 
