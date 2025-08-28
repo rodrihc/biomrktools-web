@@ -80,7 +80,7 @@ def load_analysis_blob(analysis_id: str = "adeg_brca_001") -> dict:
             variables[col] = json.loads(variables[col])
     return variables
 
-def load_analysis_delta_table(path: str = DELTA_PATH, cancer_code: str = 'OV', limit: int = 1) -> Dict[str, Any]:
+def load_analysis_delta_table(path: str = DELTA_PATH, cancer_code: str = 'LUSC', limit: int = 1) -> Dict[str, Any]:
     """
     Read first row from a Delta table as a structured Python dict.
     JSON fields are deserialized safely, while array/struct fields are preserved.

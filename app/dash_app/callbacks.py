@@ -19,8 +19,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from app.services.controllers import load_analysis_delta_table
+from app.services import controllers as ctrl
 
 from .callbacks_settings import background_callback_manager
+
 
 def render_value(key, value):
     """Render a single key/value pair or recurse if nested."""
@@ -113,45 +115,53 @@ def render_list(lst, level=0):
     return html.Div(children)
 
 
-def dict_to_table(data: dict):
-    """Convert a dictionary into a Dash DataTable with 'Key' and 'Value' columns."""
-    if not data:
-        return html.Div("No data available.")
-    
-    rows = [{"Key": k, "Value": v if not isinstance(v, (dict, list)) else str(v)} 
-            for k, v in data.items()]
-    
-    return dash_table.DataTable(
-        columns=[{"name": "Key", "id": "Key"}, {"name": "Value", "id": "Value"}],
-        data=rows,
-        page_size=20,
-        style_table={"overflowX": "auto"},
-        style_cell={"textAlign": "left", "padding": "4px"},
-        style_header={"fontWeight": "bold"},
-    )
+
+from urllib.parse import parse_qs
+from flask import request
 
 
 @callback(
-    Output("analysis-store", "data"),
-    Input("url", "pathname"),
-    background=True,
+    Output("params-store", "data"),
+    Input("url", "search")
+)
+def read_query(search):
+    if not search:
+        return {}
+    return {k: v[0] for k, v in parse_qs(search.lstrip("?")).items()}
+
+
+@callback(
+    Output("config-store", "data"),
+    Output("summary-store", "data"),
+    Output("top-genes-store", "data"),
+    Output("llm-summary-store", "data"),
+    Output("results-store", "data"),
+    Output("pc-avg-exprs-store", "data"),
+    Input("params-store", "data"),
+    background=False,
     manager=background_callback_manager
 )
-def load_analysis(_):
-    variables = load_analysis_delta_table()
-    return variables  # must be JSON-serializable
+def load_analysis(params):
+
+    variables = load_analysis_delta_table(cancer_code=params.get("cancer_code")) or {}
+
+    return (
+        variables.get("config"),
+        variables.get("dir_summary", {}).get("summary"),
+        variables.get("dir_summary", {}).get("top_genes"),
+        variables.get("llm_summary"),
+        variables.get("results"),
+        variables.get("pc_avg_exprs_pivot"),
+    )
 
 @callback(
     Output("config-panel", "children"),
-    Input("analysis-store", "data"),
+    Input("config-store", "data"),
     background=True,
     manager=background_callback_manager
 )
-def display_config(variables):
-    if not variables:
-        return html.Div("Loading...")
-    
-    config = variables["config"]
+def display_config(config):
+
     rows = [{"Key": k, "Value": v if not isinstance(v, (dict, list)) else str(v)} 
             for k, v in config.items()]
 
@@ -164,22 +174,20 @@ def display_config(variables):
             style_header={"fontWeight": "bold"},
         )
 
-
 @callback(
     Output("summary-panel", "children"),
-    Input("analysis-store", "data"),
+    Input("top-genes-store", "data"),
+    Input("summary-store", "data"),
     background=True,
     manager=background_callback_manager
 )
-def display_summary(variables):
-    if not variables:
-        return html.Div("Loading...")
-
-    top_genes = variables["dir_summary"]["top_genes"]
-    analysis_summary = variables["dir_summary"]["summary"]
+def display_summary(top_genes, analysis_summary):
 
     if not top_genes:
-        return html.Div("No top genes available.")
+        return html.Div("No results available.")
+
+    if not analysis_summary:
+        return html.Div("No analysis summary available.")    
 
     top_genes_table = dash_table.DataTable(
         columns=[{"name": k, "id": k} for k in top_genes[0].keys()],
@@ -214,17 +222,12 @@ def display_summary(variables):
                 
 @callback(
     Output("llm-response-panel", "children"),
-    Input("analysis-store", "data"),
+    Input("llm-summary-store", "data"),
     background=True,
     manager=background_callback_manager
 )
-def display_llm_response(variables):
+def display_llm_response(llm_summary):
 
-    if not variables:
-        return html.Div("Loading...")
-
-    llm_summary = variables.get("llm_summary")    
-    
     return html.Div(
         [
             html.H4("LLM Response", style={"marginBottom": "10px"}),
@@ -236,21 +239,19 @@ def display_llm_response(variables):
 
 @callback(
     Output("pca-3d-plot", "figure"),
-    Input("analysis-store", "data"),
+    Input("results-store", "data"),
     background=True,
     manager=background_callback_manager
 )
-def display_pca_3d(variables):
-    if not variables:
-        return px.scatter_3d()  # empty figure
+def display_pca_3d(pca_results):
 
-    result = variables.get("results", [])
-    if not result:
-        return px.scatter_3d()  # still empty if no results
-
+    if not pca_results:
+        return html.Div("No results available")
+        
+    
     # Build flattened DataFrame
     pc_rows = []
-    for row in result:
+    for row in pca_results:
         values = row.get("values", [])
         row_dict = {d.get('column'): d.get('value') for d in values if 'column' in d and 'value' in d}
         if not row_dict:
@@ -292,14 +293,16 @@ def display_pca_3d(variables):
 
 
 @callback(       
-    Output("heatmap-container", "children"),
-    Input("analysis-store", "data"),
+    Output("heatmap-container", "data"),
+    Input("pc-avg-exprs-store", "data"),
     background=True,
     manager=background_callback_manager)
-def update_all_heatmaps(variables):
+def update_all_heatmaps(pc_avg_exprs_pivot):
+
+    if not pc_avg_exprs_pivot:
+        return html.Div("No results available")
         
     figs = []
-    pc_avg_exprs_pivot = variables["pc_avg_exprs_pivot"]
     for pc_name in pc_avg_exprs_pivot:
 
         pc_data = pc_avg_exprs_pivot[pc_name]  # list of dicts
@@ -322,21 +325,19 @@ def update_all_heatmaps(variables):
     return figs
 
 
-
-
-
-
 @callback(
     Output("limma-logfc-plot", "figure"),
-    Input("analysis-store", "data"),
-)
-def update_limma_voom_graph(variables, top_n=20):
+    Input("top-genes-store", "data"),
+    background=True,
+    manager=background_callback_manager)
+def update_limma_voom_graph(top_genes, top_n=20):
+
     # Guard against empty or missing data
-    if not variables or "dir_summary" not in variables or "top_genes" not in variables["dir_summary"]:
+    if not top_genes:
         return go.Figure()
 
     # convert list of dicts to DataFrame
-    df = pd.DataFrame(variables["dir_summary"]["top_genes"])
+    df = pd.DataFrame(top_genes)
 
     # select top positive and negative logFC
     top_pos = df.sort_values("log_fc", ascending=False).head(top_n)
@@ -365,21 +366,17 @@ def update_limma_voom_graph(variables, top_n=20):
     return fig
 
 
-
-
-
-
-
 @callback(
     Output("limma-voom-volcano-plot", "figure"),
-    Input("analysis-store", "data"),
-)
-def update_volcano_plot(variables):
+    Input("top-genes-store", "data"),
+    background=True,
+    manager=background_callback_manager)
+def update_volcano_plot(top_genes):
     # Guard against missing data
-    if not variables or "dir_summary" not in variables or "top_genes" not in variables["dir_summary"]:
+    if not top_genes:
         return px.scatter(title="No data available")
 
-    df = pd.DataFrame(variables["dir_summary"]["top_genes"])
+    df = pd.DataFrame(top_genes)
 
     # Compute -log10 adjusted p-value
     df["neg_log10_adj_p"] = -np.log10(df["adj_p_value"])
@@ -413,23 +410,17 @@ def update_volcano_plot(variables):
     return fig
 
 
-
-
-
 @callback(
     Output("pc-box-scatter-plot", "figure"),
-    Input("analysis-store", "data"),
-)
-def update_pc_box_scatter(variables):
+    Input("results-store", "data"),
+    background=True,
+    manager=background_callback_manager)
+def update_pc_box_scatter(pca_results):
     # Guard against empty data
-    if not variables or "results" not in variables:
-        return px.scatter()  # empty figure
-
-    results = variables["results"]
 
     # Flatten nested structure into long-format DataFrame
     rows = []
-    for sample in results:
+    for sample in pca_results:
         sample_id = sample["sample_id"]
         subgroup = sample["subgroup"]
         for val in sample["values"]:
