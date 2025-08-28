@@ -44,3 +44,6 @@
   - Give minumal pcu and storage settings.
 
 - When you deploy to Azure Container Apps, you should not use admin creds. Instead, assign the AcrPull role to the Container App’s managed identity so it can pull the image cleanly.
+
+- See deployment logs:
+> az containerapp logs show --name biomrktools01capp --resource-group biomrktools02ws-web
