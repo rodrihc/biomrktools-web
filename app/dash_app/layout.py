@@ -1,8 +1,8 @@
+from dash import Input, Output, callback, dcc, html
+from dash import DiskcacheManager
 import dash_bootstrap_components as dbc
 from dash_extensions.enrich import DashProxy
-from dash import dcc, html, Input, Output, callback
 import diskcache
-from dash import DiskcacheManager
 
 cache = diskcache.Cache("./cache")
 background_callback_manager = DiskcacheManager(cache)
@@ -18,5 +18,15 @@ def serve_layout():
             dcc.Graph(id="pca-3d-plot", className="p-2 border rounded"),
             width=6
         )),
+        dbc.Row(dbc.Col(html.Div(id="heatmap-container", className="p-2 border rounded"), width=6)),
+        dbc.Row(dbc.Col(
+            dcc.Graph(id="limma-logfc-plot", className="p-2 border rounded"),
+                width=6)),
+        dbc.Row(dbc.Col(
+            dcc.Graph(id="limma-voom-volcano-plot", className="p-2 border rounded"),
+                width=6)),
+        dbc.Row(dbc.Col(
+            dcc.Graph(id="pc-box-scatter-plot", className="p-2 border rounded"),
+                width=6)),
         dbc.Row(dbc.Col(html.Div(id="llm-response-panel", className="p-2 border rounded"), width=6)),
     ], fluid=True)

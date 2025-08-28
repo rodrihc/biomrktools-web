@@ -1,12 +1,14 @@
-
 services:
   biomrktools-web:
     build: .
     container_name: biomrktools-web
     ports:
-      - "8080:8080"
+      - "8081:8081"
     env_file:
       - .env
+    environment:
+      - BIOMRKTOOLS_SA_TOKEN        # pulled from host shell
+      - BIOMRKTOOLS_ENV        # pulled from host shell
     restart: unless-stopped
     volumes:
-      - ./app:/app/app   # optional hot-reload in dev
+      - ./app:/app/app

@@ -18,5 +18,7 @@ pydantic
 pydantic-settings
 dash_bootstrap_components
 seaborn
+dash-extensions
+dash[diskcache]
 
 

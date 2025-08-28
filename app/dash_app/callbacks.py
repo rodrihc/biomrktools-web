@@ -1,8 +1,22 @@
-from dash import Input, Output, callback, dash_table, html
-from dash import Input, Output, callback, html
-from dash import dash_table, html
+from dash import Input, Output, callback, dash_table, dcc, html
+from dash import Input, Output, callback
+from dash import Input, Output, callback
+from dash import Input, Output, callback
+from dash import Input, Output, callback
+import numpy as np
+import numpy as np
+import numpy as np
+import pandas as pd
+import pandas as pd
+import pandas as pd
+import pandas as pd
 import pandas as pd
 import plotly.express as px
+import plotly.express as px
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from app.services.controllers import load_analysis_delta_table
 
@@ -272,6 +286,177 @@ def display_pca_3d(variables):
             zaxis_title='PC3'
         ),
         margin=dict(l=0, r=0, b=0, t=40)
+    )
+
+    return fig
+
+
+@callback(       
+    Output("heatmap-container", "children"),
+    Input("analysis-store", "data"),
+    background=True,
+    manager=background_callback_manager)
+def update_all_heatmaps(variables):
+        
+    figs = []
+    pc_avg_exprs_pivot = variables["pc_avg_exprs_pivot"]
+    for pc_name in pc_avg_exprs_pivot:
+
+        pc_data = pc_avg_exprs_pivot[pc_name]  # list of dicts
+        pivot_df = pd.DataFrame(pc_data).set_index("ensembl")
+
+        # heatmap
+        fig = px.imshow(
+            pivot_df,
+            labels=dict(x="Subgroup", y="Gene (Ensembl)", color="Expression"),
+            x=pivot_df.columns,
+            y=pivot_df.index,
+            color_continuous_scale="Viridis",
+            title=f"Heatmap for {pc_name}"
+        )
+        fig.update_layout(xaxis={"side": "top"})
+        figs.append(
+            dcc.Graph(figure=fig, id=f"heatmap-{pc_name}")
+        )
+
+    return figs
+
+
+
+
+
+
+@callback(
+    Output("limma-logfc-plot", "figure"),
+    Input("analysis-store", "data"),
+)
+def update_limma_voom_graph(variables, top_n=20):
+    # Guard against empty or missing data
+    if not variables or "dir_summary" not in variables or "top_genes" not in variables["dir_summary"]:
+        return go.Figure()
+
+    # convert list of dicts to DataFrame
+    df = pd.DataFrame(variables["dir_summary"]["top_genes"])
+
+    # select top positive and negative logFC
+    top_pos = df.sort_values("log_fc", ascending=False).head(top_n)
+    top_neg = df.sort_values("log_fc", ascending=True).head(top_n)
+    top_combined = pd.concat([top_neg, top_pos])
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Bar(
+            x=top_combined["log_fc"],
+            y=top_combined["gene"],
+            orientation="h",
+            marker_color=np.where(top_combined["log_fc"] >= 0, "steelblue", "indianred")
+        )
+    )
+
+    fig.update_layout(
+        title=f"Top ±{top_n} logFC genes (limma-voom)",
+        xaxis_title="log Fold Change",
+        yaxis_title="Gene",
+        height=600,
+        margin=dict(l=200, r=50, t=50, b=50)
+    )
+
+    return fig
+
+
+
+
+
+
+
+@callback(
+    Output("limma-voom-volcano-plot", "figure"),
+    Input("analysis-store", "data"),
+)
+def update_volcano_plot(variables):
+    # Guard against missing data
+    if not variables or "dir_summary" not in variables or "top_genes" not in variables["dir_summary"]:
+        return px.scatter(title="No data available")
+
+    df = pd.DataFrame(variables["dir_summary"]["top_genes"])
+
+    # Compute -log10 adjusted p-value
+    df["neg_log10_adj_p"] = -np.log10(df["adj_p_value"])
+
+    # Define significance
+    df["significant"] = (df["adj_p_value"] < 0.05) & (abs(df["log_fc"]) > 1)
+
+    fig = px.scatter(
+        df,
+        x="log_fc",
+        y="neg_log10_adj_p",
+        hover_data=["gene", "log_fc", "adj_p_value"],
+        color="significant",
+        color_discrete_map={True: "red", False: "grey"},
+        labels={
+            "log_fc": "Log2 Fold Change",
+            "neg_log10_adj_p": "-log10(FDR)"
+        },
+        title="Volcano Plot"
+    )
+
+    fig.update_traces(marker=dict(size=6, opacity=0.8), selector=dict(mode='markers'))
+    fig.update_layout(height=600, width=800, updatemenus=[{
+        "buttons": [
+            {"args": [None, {"frame": {"duration": 50, "redraw": True}, "fromcurrent": True}],
+             "label": "Play", "method": "animate"}
+        ],
+        "showactive": True
+    }])
+
+    return fig
+
+
+
+
+
+@callback(
+    Output("pc-box-scatter-plot", "figure"),
+    Input("analysis-store", "data"),
+)
+def update_pc_box_scatter(variables):
+    # Guard against empty data
+    if not variables or "results" not in variables:
+        return px.scatter()  # empty figure
+
+    results = variables["results"]
+
+    # Flatten nested structure into long-format DataFrame
+    rows = []
+    for sample in results:
+        sample_id = sample["sample_id"]
+        subgroup = sample["subgroup"]
+        for val in sample["values"]:
+            rows.append({
+                "sample_id": sample_id,
+                "subgroup": subgroup,
+                "PC": val["column"],
+                "value": val["value"]
+            })
+
+    df = pd.DataFrame(rows)
+
+    # Create combined box + scatter plot
+    fig = px.box(
+        df,
+        x="PC",
+        y="value",
+        color="subgroup",
+        points="all",  # show scatter points
+        hover_data=["sample_id"]
+    )
+
+    fig.update_layout(
+        height=600,
+        width=800,
+        boxmode="group",  # group boxes by PC
+        title="PC values by Subgroup with Scatter Points"
     )
 
     return fig
